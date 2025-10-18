@@ -14,7 +14,7 @@ const app = express();
 // ✅ Allow both local and production frontends
 const allowedOrigins = [
   "http://localhost:5173", // local React/Vite frontend
-  "https://your-frontend-domain.vercel.app", // <-- replace with your deployed frontend URL if any
+  "https://dental-beta-beryl.vercel.app", // deployed Vercel frontend (⚠️ no trailing slash)
 ];
 
 app.use(
@@ -23,11 +23,13 @@ app.use(
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
+        console.log("❌ Blocked by CORS:", origin);
         callback(new Error("Not allowed by CORS"));
       }
     },
     methods: ["GET", "POST"],
     allowedHeaders: ["Content-Type"],
+    credentials: true,
   })
 );
 
@@ -107,11 +109,11 @@ app.get("/api/history/:userId", (req, res) => {
 
 // ✅ Root route for testing
 app.get("/", (req, res) => {
-  res.send("✅ Backend is working fine!");
+  res.send("✅ Backend is working fine on Railway!");
 });
 
 // ✅ PORT handling for both local & Railway
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });

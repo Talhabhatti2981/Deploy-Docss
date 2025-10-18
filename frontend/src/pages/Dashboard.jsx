@@ -7,6 +7,12 @@ function Dashboard() {
   const [result, setResult] = useState("");
   const [error, setError] = useState("");
 
+  // ✅ Smart API base URL (auto switch between local & production)
+  const API_BASE =
+    import.meta.env.MODE === "development"
+      ? "http://localhost:5000"
+      : "https://dental-production-1c13.up.railway.app";
+
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
     if (selectedFile && selectedFile.type === "application/pdf") {
@@ -32,7 +38,7 @@ function Dashboard() {
       const formData = new FormData();
       formData.append("file", file);
 
-      const res = await fetch("http://localhost:5000/api/upload", {
+      const res = await fetch(`${API_BASE}/api/upload`, {
         method: "POST",
         body: formData,
       });
@@ -42,7 +48,8 @@ function Dashboard() {
         setResult(data.extractedText);
 
         // ✅ Save to localStorage for history
-        const previousData = JSON.parse(localStorage.getItem("historyData")) || [];
+        const previousData =
+          JSON.parse(localStorage.getItem("historyData")) || [];
         const newEntry = {
           fileName: fileName,
           extractedText: data.extractedText,
@@ -50,7 +57,6 @@ function Dashboard() {
         };
         const updatedData = [...previousData, newEntry];
         localStorage.setItem("historyData", JSON.stringify(updatedData));
-
       } else {
         setError(data.message || "Failed to extract text");
       }
