@@ -6,30 +6,24 @@ import path from "path";
 import { fileURLToPath } from "url";
 import PDFParser from "pdf2json";
 
-// ------------------------
-// 🧠 Setup
-// ------------------------
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
 
-// ------------------------
-// ⚙️ CORS Configuration (100% Working)
-// ------------------------
+// ✅ Allowed origins
 const allowedOrigins = [
-  "http://localhost:5173", // Local frontend (Vite)
-  "https://dental-beta-beryl.vercel.app", // Vercel production frontend (⚠️ no trailing slash)
+  "http://localhost:5173",
+  "https://dental-beta-beryl.vercel.app",
 ];
 
 app.use(
   cors({
-    origin: (origin, callback) => {
-      if (!origin) return callback(null, true); // Allow requests like Postman
-      if (allowedOrigins.includes(origin)) {
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
-        console.warn("🚫 Blocked by CORS:", origin);
+        console.log("❌ Blocked by CORS:", origin);
         callback(new Error("Not allowed by CORS"));
       }
     },
@@ -39,19 +33,12 @@ app.use(
   })
 );
 
-// ✅ Handle preflight requests properly
-app.options("*", cors());
-
-// ------------------------
-// 🧾 Middleware
-// ------------------------
 app.use(express.json());
 
-let uploadsHistory = [];
+// ✅ Handle preflight OPTIONS requests globally
+app.options("*", cors());
 
-// ------------------------
-// 📂 Multer setup
-// ------------------------
+// ✅ Multer setup
 const upload = multer({
   dest: path.join(__dirname, "uploads"),
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
@@ -66,9 +53,9 @@ if (!fs.existsSync(path.join(__dirname, "uploads"))) {
   fs.mkdirSync(path.join(__dirname, "uploads"), { recursive: true });
 }
 
-// ------------------------
-// 📤 Upload endpoint
-// ------------------------
+let uploadsHistory = [];
+
+// ✅ Upload endpoint
 app.post("/api/upload", upload.single("file"), async (req, res) => {
   try {
     if (!req.file) {
@@ -87,7 +74,7 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
     });
 
     const extractedText = pdfParser.getRawTextContent();
-    console.log("📄 Extracted text (first 100 chars):", extractedText?.slice(0, 100) + "...");
+    console.log("📄 Extracted text:", extractedText?.slice(0, 100) + "...");
 
     uploadsHistory.push({
       id: Date.now(),
@@ -98,7 +85,6 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
       status: "Processed",
     });
 
-    // Delete temporary file
     fs.unlink(filePath, (err) => {
       if (err) console.error("⚠️ Failed to delete uploaded file:", err);
     });
@@ -118,24 +104,18 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
   }
 });
 
-// ------------------------
-// 🧾 Upload history
-// ------------------------
+// ✅ History route
 app.get("/api/history/:userId", (req, res) => {
   const userUploads = uploadsHistory.filter((u) => u.userId === req.params.userId);
   res.json(userUploads);
 });
 
-// ------------------------
-// ✅ Root test route
-// ------------------------
+// ✅ Root route
 app.get("/", (req, res) => {
-  res.send("✅ Dental Backend is live and running on Railway!");
+  res.send("✅ Backend running on Railway with full CORS support!");
 });
 
-// ------------------------
-// 🚀 Server Start (works local + Railway)
-// ------------------------
+// ✅ Start server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Server running on port ${PORT}`);
