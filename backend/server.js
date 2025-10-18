@@ -6,15 +6,26 @@ import path from "path";
 import { fileURLToPath } from "url";
 import PDFParser from "pdf2json";
 
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
 
+// ✅ Allow both local and production frontends
+const allowedOrigins = [
+  "http://localhost:5173", // local React/Vite frontend
+  "https://your-frontend-domain.vercel.app", // <-- replace with your deployed frontend URL if any
+];
+
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     methods: ["GET", "POST"],
     allowedHeaders: ["Content-Type"],
   })
@@ -24,7 +35,7 @@ app.use(express.json());
 
 let uploadsHistory = [];
 
-
+// ✅ Multer setup
 const upload = multer({
   dest: path.join(__dirname, "uploads"),
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
@@ -34,10 +45,12 @@ const upload = multer({
   },
 });
 
+// ✅ Ensure uploads folder exists
 if (!fs.existsSync(path.join(__dirname, "uploads"))) {
   fs.mkdirSync(path.join(__dirname, "uploads"), { recursive: true });
 }
 
+// ✅ Upload endpoint
 app.post("/api/upload", upload.single("file"), async (req, res) => {
   try {
     if (!req.file) {
@@ -86,21 +99,19 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
   }
 });
 
-
+// ✅ Upload history route
 app.get("/api/history/:userId", (req, res) => {
-  const userUploads = uploadsHistory.filter(
-    (u) => u.userId === req.params.userId
-  );
+  const userUploads = uploadsHistory.filter((u) => u.userId === req.params.userId);
   res.json(userUploads);
 });
 
-
+// ✅ Root route for testing
 app.get("/", (req, res) => {
   res.send("✅ Backend is working fine!");
 });
 
-
-const PORT = 5000;
+// ✅ PORT handling for both local & Railway
+const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`Backend running on http://localhost:${PORT}`);
+  console.log(`🚀 Server running on port ${PORT}`);
 });
