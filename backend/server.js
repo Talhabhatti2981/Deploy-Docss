@@ -5,22 +5,31 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import PDFParser from "pdf2json";
+import dotenv from "dotenv";
+import { createClient } from "@supabase/supabase-js";
+
+dotenv.config(); // Load .env
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
 
-// ✅ Debug info to confirm deploy version
+// ✅ Supabase Admin client
+const supabaseAdmin = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
+
+// ✅ Debug info
 console.log("✅ Backend deployed:", new Date().toISOString());
 
-// ✅ Allowed frontend origins (local + production)
+// ✅ Allowed frontend origins (for API)
 const allowedOrigins = [
-  "http://localhost:5173", // local React/Vite
-  "https://dental-beta-beryl.vercel.app", // production (no trailing slash!)
+  "http://localhost:5173",
+  "https://dental-beta-beryl.vercel.app",
 ];
 
-// ✅ CORS setup (with OPTIONS handling)
 app.use((req, res, next) => {
   const origin = req.headers.origin;
   if (allowedOrigins.includes(origin)) {
@@ -29,9 +38,7 @@ app.use((req, res, next) => {
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   res.setHeader("Access-Control-Allow-Credentials", "true");
-  if (req.method === "OPTIONS") {
-    return res.sendStatus(200);
-  }
+  if (req.method === "OPTIONS") return res.sendStatus(200);
   next();
 });
 
@@ -40,7 +47,7 @@ app.use(express.json());
 // ✅ Memory store for uploaded file history
 let uploadsHistory = [];
 
-// ✅ Multer setup
+// ✅ Multer setup for PDF uploads
 const upload = multer({
   dest: path.join(__dirname, "uploads"),
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
@@ -51,16 +58,16 @@ const upload = multer({
 });
 
 // ✅ Ensure uploads folder exists
-if (!fs.existsSync(path.join(__dirname, "uploads"))) {
-  fs.mkdirSync(path.join(__dirname, "uploads"), { recursive: true });
+const uploadsDir = path.join(__dirname, "uploads");
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
-// ✅ PDF Upload + Text Extraction
+// ================= PDF Upload + Extraction =================
 app.post("/api/upload", upload.single("file"), async (req, res) => {
   try {
-    if (!req.file) {
+    if (!req.file)
       return res.status(400).json({ success: false, message: "No file uploaded" });
-    }
 
     console.log("📂 File uploaded:", req.file.originalname);
 
@@ -85,7 +92,7 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
       status: "Processed",
     });
 
-    // delete uploaded file
+    // Clean up uploaded file
     fs.unlink(filePath, (err) => {
       if (err) console.error("⚠️ Failed to delete uploaded file:", err);
     });
@@ -97,26 +104,43 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
     });
   } catch (error) {
     console.error("❌ Error during PDF extraction:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to process PDF file",
-      error: error.toString(),
-    });
+    res.status(500).json({ success: false, message: "Failed to process PDF file" });
   }
 });
 
-// ✅ Upload history route
+// ================= Upload History =================
 app.get("/api/history/:userId", (req, res) => {
   const userUploads = uploadsHistory.filter((u) => u.userId === req.params.userId);
   res.json(userUploads);
 });
 
-// ✅ Root route for testing
-app.get("/", (req, res) => {
-  res.send("✅ Backend is working fine on Railway with CORS enabled!");
+// ================= Delete Account =================
+app.post("/api/delete-account", async (req, res) => {
+  const { userId } = req.body;
+  if (!userId) return res.status(400).json({ error: "User ID required" });
+
+  try {
+    const { error } = await supabaseAdmin.auth.admin.deleteUser(userId);
+    if (error) return res.status(500).json({ error: error.message });
+
+    uploadsHistory = uploadsHistory.filter((u) => u.userId !== userId);
+
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-// ✅ Dynamic port for local + Railway
+// ================= Serve Frontend Build =================
+const frontendPath = path.join(__dirname, "../frontend/dist");
+app.use(express.static(frontendPath));
+
+// ✅ Fallback route for React Router (SPA)
+app.get("*", (req, res) => {
+  res.sendFile(path.join(frontendPath, "index.html"));
+});
+
+// ================= Start Server =================
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Server running on port ${PORT}`);

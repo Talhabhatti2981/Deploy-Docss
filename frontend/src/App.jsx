@@ -8,6 +8,8 @@ import ResultsPage from "./pages/ResultsPage";
 import HistoryPage from "./components/HistoryPage";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
+import ProfilePage from "./pages/ProfilePage";
+
 
 import "./App.css";
 
@@ -80,6 +82,8 @@ export default function App() {
                 <Route path="/results" element={<ResultsPage />} />
                 <Route path="/history" element={<HistoryPage />} />
                 <Route path="*" element={<Navigate to="/" />} />
+                <Route path="/profile" element={<ProfilePage />} />
+
               </Routes>
             </main>
           </div>

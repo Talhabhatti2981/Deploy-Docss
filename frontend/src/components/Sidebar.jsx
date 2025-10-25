@@ -1,15 +1,22 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { FiHome, FiFileText, FiClock } from "react-icons/fi"; // added FiClock for History icon
+import { FiHome, FiFileText, FiClock, FiUser } from "react-icons/fi";
 
 export default function Sidebar({ sidebarOpen }) {
   const location = useLocation();
+  const [monthlyUsage, setMonthlyUsage] = useState(0);
 
   const navItems = [
     { name: "Dashboard", path: "/", icon: <FiHome /> },
     { name: "Results", path: "/results", icon: <FiFileText /> },
-    { name: "History", path: "/history", icon: <FiClock /> }, // ✅ new link
+    { name: "History", path: "/history", icon: <FiClock /> },
+    { name: "Profile", path: "/profile", icon: <FiUser /> }, // ✅ Profile link
   ];
+
+  useEffect(() => {
+    const usage = parseInt(localStorage.getItem("monthlyUsage") || "0");
+    setMonthlyUsage(usage);
+  }, []);
 
   return (
     <aside
@@ -44,9 +51,23 @@ export default function Sidebar({ sidebarOpen }) {
             );
           })}
         </nav>
+
+        {/* 🔹 Monthly Usage Progress */}
+        {sidebarOpen && (
+          <div className="mt-8 px-4">
+            <h3 className="text-sm font-medium text-gray-500 mb-1">Monthly Usage</h3>
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div
+                className="bg-blue-500 h-2 rounded-full transition-all"
+                style={{ width: `${Math.min(monthlyUsage * 10, 100)}%` }} // assuming 10 docs = 100%
+              ></div>
+            </div>
+            <p className="text-xs text-gray-500 mt-1">{monthlyUsage} docs this month</p>
+          </div>
+        )}
       </div>
 
-      {/* 🔹 Footer / Small Text */}
+      {/* 🔹 Footer */}
       <div className="p-4 text-center text-xs text-gray-400">
         {sidebarOpen ? "© 2025 DentalDoc" : "©"}
       </div>
